@@ -85,10 +85,33 @@ function getRandomColor() {
 }
 
 /**
+ * Remove all the floating mark elements from the page
+ */
+function removeStyleMarks() {
+  for (const label of labels) {
+    document.body.removeChild(label);
+  }
+
+  labels = [];
+}
+
+/**
+ * Remove all the data-interactive-index attributes from the page
+ */
+function removeAttributeMarks() {
+  const elements = document.querySelectorAll("[data-interactive-index]");
+
+  for (let i = 0; i < elements.length; i++) {
+    elements[i].removeAttribute("data-interactive-index");
+  }
+}
+
+/**
  * Mark interactable elements on the page
  */
 function markPage() {
-  unmarkPage();
+  removeStyleMarks();
+  removeAttributeMarks();
 
   let items = [...document.querySelectorAll(selectors.join(", "))].reduce(
     (acc, element) => {
@@ -99,10 +122,6 @@ function markPage() {
         const textualContent = element.textContent
           .trim()
           .replace(/\s{2,}/g, " ");
-
-        if (elementType === "a") {
-          element.setAttribute("target", "_self");
-        }
 
         acc.push({
           element,
@@ -122,6 +141,16 @@ function markPage() {
   items = items.filter(
     (x) => !items.some((y) => x.element.contains(y.element) && !(x == y))
   );
+
+  items.forEach((item, index) => {
+    // Make all links open in the same tab because agent can make screenshot only of one page
+    if (item.type === "a") {
+      item.element.setAttribute("target", "_self");
+    }
+
+    // Mark element with custom data attribute for interaction
+    item.element.setAttribute("data-interactive-index", index);
+  });
 
   // Add floating border on top of these elements that will always be visible
   items.forEach((item, index) => {
@@ -164,8 +193,8 @@ function markPage() {
 
   const coordinates = items.flatMap((item) => {
     return {
-      x: (item.rects.left + item.rects.left + item.rects.width) / 2,
-      y: (item.rects.top + item.rects.top + item.rects.height) / 2,
+      x: item.rects.x + item.rects.width / 2,
+      y: item.rects.y + item.rects.height / 2,
       type: item.type,
       text: item.text,
       ariaLabel: item.ariaLabel,
@@ -173,13 +202,4 @@ function markPage() {
   });
 
   return coordinates;
-}
-
-function unmarkPage() {
-  // Unmark page logic
-  for (const label of labels) {
-    document.body.removeChild(label);
-  }
-
-  labels = [];
 }

@@ -3,16 +3,17 @@ import base64
 import re
 import os
 
-from agent_state import AgentState
-from tools import tools
 from utils.patch_asyncio import patch_asyncio
+from state import AgentState
+from tools import tools
+from messages import system_message, human_message
 
-from langchain import hub
 from langgraph.graph import END, START, StateGraph
 from langchain_core.runnables import chain
-from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 from playwright.async_api import async_playwright, Page
@@ -53,10 +54,10 @@ async def mark_page(page: Page):
     )
 
     # Clean up bboxes
-    await page.evaluate("unmarkPage()")
+    await page.evaluate("removeStyleMarks()")
 
     return {
-        "img": base64.b64encode(screenshot).decode(),
+        "b64_image": base64.b64encode(screenshot).decode(),
         "bboxes": bboxes,
     }
 
@@ -115,7 +116,24 @@ def parse(text: str) -> dict:
     return {"action": action, "args": action_input}
 
 
-prompt = hub.pull("wfh/web-voyager")
+prompt = ChatPromptTemplate(
+    [
+        ("system", system_message),
+        ("placeholder", "{scratchpad}"),
+        (
+            "human",
+            [
+                {"type": "text", "text": human_message},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:image/jpeg;base64,{b64_image}",
+                    },
+                },
+            ],
+        ),
+    ]
+)
 
 llm = ChatOpenAI(model="gpt-4o", max_tokens=4096)
 
@@ -132,10 +150,12 @@ agent = annotate | RunnablePassthrough.assign(
 def update_scratchpad(state: AgentState):
     """After a tool is invoked, we want to update
     the scratchpad so the agent is aware of its previous steps"""
-    old = state.get("scratchpad")
+    scratchpad = state.get("scratchpad")
 
-    if old:
-        txt = old[0].content
+    print("SCRATCHPAD", scratchpad)
+
+    if scratchpad:
+        txt = scratchpad[0].content
         last_line = txt.rsplit("\n", 1)[-1]
         step = int(re.match(r"\d+", last_line).group()) + 1
     else:

@@ -1,7 +1,7 @@
 import platform
 import asyncio
 
-from agent_state import AgentState
+from state import AgentState
 
 
 async def click(state: AgentState):
@@ -12,17 +12,9 @@ async def click(state: AgentState):
     if click_args is None or len(click_args) != 1:
         return f"Failed to click bounding box labeled as number {click_args}"
 
-    bbox_id = click_args[0]
-    bbox_id = int(bbox_id)
+    bbox_id = int(click_args[0])
 
-    try:
-        bbox = state["bboxes"][bbox_id]
-    except Exception:
-        return f"Error: no bbox for : {bbox_id}"
-
-    x, y = bbox["x"], bbox["y"]
-
-    await page.mouse.click(x, y)
+    await page.click(f"[data-interactive-index='{bbox_id}']")
 
     return f"Clicked {bbox_id}"
 
@@ -36,14 +28,10 @@ async def type_text(state: AgentState):
             f"Failed to type in element from bounding box labeled as number {type_args}"
         )
 
-    bbox_id = type_args[0]
-    bbox_id = int(bbox_id)
-
-    bbox = state["bboxes"][bbox_id]
-    x, y = bbox["x"], bbox["y"]
+    bbox_id = int(type_args[0])
     text_content = type_args[1]
 
-    await page.mouse.click(x, y)
+    await page.click(f"[data-interactive-index='{bbox_id}']")
 
     # Check if MacOS
     select_all = "Meta+A" if platform.system() == "Darwin" else "Control+A"
