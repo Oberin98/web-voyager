@@ -5,6 +5,7 @@ import os
 
 from agent_state import AgentState
 from tools import tools
+from utils.patch_asyncio import patch_asyncio
 
 from langchain import hub
 from langgraph.graph import END, START, StateGraph
@@ -18,6 +19,7 @@ from playwright.async_api import async_playwright, Page
 from dotenv import load_dotenv
 
 load_dotenv()
+patch_asyncio()
 
 #
 #   Page annotation
@@ -192,45 +194,44 @@ async def run_agent(question: str, max_steps: int = 150):
     browser = await playwrite.chromium.launch(headless=False, args=None)
     page = await browser.new_page()
 
-    await page.goto("https://www.google.com")
+    try:
+        await page.goto("https://www.google.com")
 
-    event_stream = graph.astream(
-        {
-            "page": page,
-            "input": question,
-            "scratchpad": [],
-        },
-        {
-            "recursion_limit": max_steps,
-        },
-    )
+        event_stream = graph.astream(
+            {
+                "page": page,
+                "input": question,
+                "scratchpad": [],
+            },
+            {
+                "recursion_limit": max_steps,
+            },
+        )
 
-    final_answer = None
-    steps = []
+        final_answer = None
+        steps = []
 
-    async for event in event_stream:
-        # We'll display an event stream here
-        if "agent" not in event:
-            continue
+        async for event in event_stream:
+            # We'll display an event stream here
+            if "agent" not in event:
+                continue
 
-        pred = event["agent"].get("prediction") or {}
-        action = pred.get("action")
-        action_input = pred.get("args")
-        steps.append(f"{len(steps) + 1}. {action}: {action_input}")
+            pred = event["agent"].get("prediction") or {}
+            action = pred.get("action")
+            action_input = pred.get("args")
+            steps.append(f"{len(steps) + 1}. {action}: {action_input}")
 
-        print("\n".join(steps))
+            print("\n".join(steps))
 
-        if "ANSWER" in action:
-            final_answer = action_input[0]
-            break
+            if "ANSWER" in action:
+                final_answer = action_input[0]
+                break
 
-    print(final_answer)
+        print(final_answer)
+    finally:
+        await page.close()
+        await browser.close()
+        await playwrite.stop()
 
 
-# asyncio.run(
-#     run_agent(
-#         "Go to https://pgawest.ezlinksgolf.com/index.html#/preSearch and tell me what tee times are available for reservation on September 17, 2024"
-#     )
-# )
-# asyncio.run(run_agent("What are the best restaurants in Bratislava?"))
-# asyncio.run(run_agent("Could you please explain what SoM-GPT4V is?"))
+asyncio.run(run_agent("Could you please explain what SoM-GPT4V is?"))
