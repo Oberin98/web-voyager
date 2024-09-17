@@ -42,7 +42,7 @@ const selectors = [
 /**
  * Check if an element is visible on the page and in the viewport
  */
-function isElementVisible(element) {
+function isVisible(element) {
   // Check if the element is visible by styles
   const style = window.getComputedStyle(element);
 
@@ -69,7 +69,13 @@ function isElementVisible(element) {
   const isInViewport =
     rect.top < vh && rect.left < vw && rect.bottom > 0 && rect.right > 0;
 
-  return isVisibleByStyle && isInViewport;
+  // Check if element is overlapping with other elements
+  const elCenterX = rect.x + rect.width / 2;
+  const elCenterY = rect.y + rect.height / 2;
+  const elAtCenter = document.elementFromPoint(elCenterX, elCenterY);
+  const isOverlapping = elAtCenter !== element && !element.contains(elAtCenter);
+
+  return isVisibleByStyle && isInViewport && !isOverlapping;
 }
 
 /**
@@ -115,7 +121,7 @@ function markPage() {
 
   let items = [...document.querySelectorAll(selectors.join(", "))].reduce(
     (acc, element) => {
-      if (isElementVisible(element)) {
+      if (isVisible(element)) {
         const rects = element.getBoundingClientRect();
         const ariaLabel = element.getAttribute("aria-label") || "";
         const elementType = element.tagName.toLowerCase();
@@ -182,7 +188,8 @@ function markPage() {
       background: elementColor,
       color: "white",
       padding: "2px 4px",
-      fontSize: "12px",
+      fontSize: "14px",
+      fontWeight: "bold",
       borderRadius: "2px",
     });
 
