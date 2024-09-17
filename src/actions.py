@@ -25,7 +25,7 @@ class ClickInputSchema(BaseModel):
 
 
 #
-# Define click_tool as an abstract function to enable structured LLM output for the type_node
+# Define click_tool as an abstract function to enable structured LLM output for the click_node
 #
 
 

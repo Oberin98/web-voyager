@@ -21,9 +21,3 @@ async def run_agent(question: str, max_steps: int = 150):
 
 
 # asyncio.run(run_agent("Could you please explain what SoM-GPT4V is?"))
-
-# asyncio.run(
-#     run_agent(
-#         "What tee times are available for reservation on September 17, 2024 in PGA West golf resort?"
-#     )
-# )
